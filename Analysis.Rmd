@@ -1,0 +1,326 @@
+---
+title: "Life Expectancy"
+author: "WIE2003 Group15"
+date: "6/7/2020"
+output: html_document
+---
+<style>
+body {
+    position: absolute;
+    left: 0px;}
+</style>
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+```
+
+# **Part 1**
+# **Introduction**
+
+To study the average life expectancy across countries over time from 2000 to 2015. The Global Health Observatory (GHO) data repository under World Health Organization (WHO) keeps track of the health status as well as many other related factors for all countries. The data sets are made available to public for the purpose of health data analysis.
+
+It is interesting that the trend of life expectancy varies across different countries around the globe. In this study, our objective is to find out what the underlying reasons are behind the trend.
+
+
+<br/><br/>
+
+# **Part 2 **
+# **Question**
+
+* What is the relationship of alcohol consumption, health expenditure, GDP, population and other factors with life expectancy across various countries from 2000 to 2015 ?
+
+<br/><br/>
+
+
+# **Part 3**
+# **Objectives** 
+1. To determine the correlation between health expenditure, GDP, alcohol consumption, composition of income and life expectancy.
+2. To analyze the trend found in the factors affecting life expectancy
+3. To determine the effect that each factor has on the life expectancy of citizens of each country
+
+
+<br/><br/>
+
+
+At first, we import the library needed to process our data
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+```
+
+<br/><br/>
+
+Then, we set our working directory and read the dataset from the excel file in the directory
+setwd("C:\\Users\\Windows 10\\Documents\\RStudio\\LifeExpectancyAnalysis\\LifeExpectancy")
+```{r}
+file <- read.csv("LifeExpectancyData.csv", na.strings = "NA")
+```
+
+
+<br/><br/>
+<br/><br/>
+
+
+# **Part 4**
+# **Data Cleaning**
+
+
+We then select the columns that we need from the dataset
+```{r}
+data <- file %>% select(Country, Year, Status, Life.expectancy, Alcohol, percentage.expenditure,GDP,Population,Income.composition.of.resources)
+``` 
+<br/><br/>
+
+
+The dataset contains some empty values of Life expectancy. But most of the empty values are from a certain countries
+like Marshall Islands, Monaco, Nauru and Saint Kitts and Nevis. Those countries only have one record from one year, it means that we are not able to calculate median or mean of the country's life expectancy to fill the empty value. We deleted the rows which contains empty life expectancy value.
+```{r}
+sum(is.na(data$Life.expectancy))
+data <- data %>% drop_na(Life.expectancy)
+```
+<br/><br/>
+
+
+
+percentage expenditure column contains some 0 values. We then grouped the data by country, find the median of percentage expenditure(Expenditure on health as a percentage of Gross Domestic Product per capita(%)) and fill the rows which contain 0 with the median calculated for that particular country(if any). But some countries don't have record at all for the percentage expenditure column, thus the median we found was also 0 for that country. We decided to delete those rows altogether.
+```{r}
+sum(is.na(data$percentage.expenditure))
+sum(data$percentage.expenditure == 0)
+data <- data %>% group_by(Country) %>% mutate(percentage.expenditure = replace(percentage.expenditure, percentage.expenditure == 0,median(percentage.expenditure ,na.rm = TRUE)))
+
+sum(is.na(data$percentage.expenditure))
+index <- which(data$percentage.expenditure != 0)
+data <- data[index,]
+```
+
+
+<br/><br/>
+
+For Alcohol Consumption per capita consumption in litre, most of the countries have only one or two missing values. So we calculated mean value of alcohol consumption of each countries from 2000-2015, and fill the missing value of alcohol for that country(if any). After that, we found that South Sudan and Palau don't have records for alcohol consumption at all, so we deleted the rows of those countries.
+```{r}
+sum(is.na(data$Alcohol))
+data <- data %>% group_by(Country) %>% mutate(Alcohol = replace(Alcohol, is.na(Alcohol), median(Alcohol, na.rm = TRUE)))
+sum(is.na(data$Alcohol))
+index1 <- which(is.na(data$Alcohol))
+data[index1,]
+data <- data %>% drop_na(Alcohol)
+```
+
+
+
+<br/><br/>
+
+For GDP, since most of the NA values for GDP come from the same countries(multiple NA GDP for one country), we deleted the rows which contain the NA values.
+```{r}
+data[which(is.na(data$GDP)),]
+data <- data %>% drop_na(GDP)
+```
+
+
+<br/><br/>
+
+For Population, again it's just that we have countries which contain the population record for all the year from 2000-2015, OR countries which don't have records at all for population because it's difficult to get population data from certain countries. Therefore, we deleted those rows.
+```{r}
+sum(is.na(data$Population))
+data[which(is.na(data$Population)),]
+data <- data %>% drop_na(Population)
+```
+
+
+<br/><br/>
+
+We have only one NA value for income.composition of resources and that country only has one record of year 2013in our dataset, so we are not able to calculate median or mean of income for that country(From 2000-2015). We deleted that row.
+```{r}
+sum(is.na(data$Income.composition.of.resources))
+data[which(is.na(data$Income.composition.of.resources)),]
+data <- data %>% drop_na(Income.composition.of.resources)
+```
+
+
+
+<br/><br/>
+<br/><br/>
+
+# **Part 5**
+# **Exploratory Graph**
+
+We need to understand our data properties by looking at the structure of our data
+
+```{r}
+head(data)
+glimpse(data)
+```
+
+<br/><br/>
+
+Summary of Life Expectancy
+```{r}
+summary(data$Life.expectancy)
+```
+
+<br/><br/>
+
+Boxplot of Life expectancy
+```{r}
+boxplot(data$Life.expectancy, col = "blue")
+```
+
+<br/><br/>
+
+Histogram of Life Expectancy
+```{r}
+hist(data$Life.expectancy, col = "green")
+rug(data$Life.expectancy)
+abline(v = median(data$Life.expectancy), col = "magenta")
+```
+
+<br/><br/>
+
+Barplot to see how development status varies
+```{r}
+barplot(table(data$Status), col = "blue", main = "Number of Developed and Developing Countries")
+```
+
+
+<br/><br/>
+<br/><br/>
+
+
+# **Part 6**
+# **Data Analysis**
+
+
+<br/><br/>
+
+Initially, we constructed a correlation matrix to gain understanding of how each of the factor affects the life expectancy. We only select the factors to build the correlation matrix. We also created a heatmap to visualize the correlation matrix.
+```{r}
+correlationFrame <- data
+correlationFrame <- ungroup(correlationFrame)
+correlationFrame <- correlationFrame %>% select(Life.expectancy, Alcohol, percentage.expenditure, GDP, Population, Income.composition.of.resources)
+#cor(correlationFrame)
+cormat <- round(cor(correlationFrame),2)
+head(cormat)
+library(reshape2)
+melted_cormat <- melt(cormat)
+head(melted_cormat)
+ggplot(data = melted_cormat, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile() + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + xlab("") + ylab("")
+```
+
+
+<br/><br/>
+
+# **Graph of Life Expectancy and Alcohol** 
+
+
+```{r}
+df1 <- data %>% group_by(Country) %>% mutate(meanLifeExp= mean(Life.expectancy), meanAlcohol = mean(Alcohol)) %>% distinct(Country, .keep_all = TRUE) %>% ungroup() %>% select(Status, meanLifeExp, meanAlcohol)
+graph1 <- ggplot(df1, aes(x = meanAlcohol, y = meanLifeExp, color = Status)) + geom_point() + xlab("Alcohol Consumption per capita (in Litre)") + ylab("Life expectancy") + facet_wrap(~Status) + ggtitle("Relationship betweeen Life Expectancy and Alcohol Consumption")
+graph1 
+```
+
+<br/><br/>
+
+# **Graph of Life Expectancy and Expenditure on health as a percentage of Gross Domestic Product per capita(%)**
+```{r}
+df2 <- data %>% group_by(Country) %>% mutate(meanLifeExp = mean(Life.expectancy), meanExpenditure = mean(percentage.expenditure)) %>% distinct(Country, .keep_all = TRUE) %>% ungroup() %>% select(Status, meanLifeExp, meanExpenditure)  
+graph2 <- ggplot(df2, aes(x = meanExpenditure,y = meanLifeExp, color = Status)) + geom_point() + facet_wrap(~Status) + ggtitle("Relationship between Life Expectancy and Expenditure on health as a percentage of Gross Domestic Product per capita(%)") + xlab("Percentage of Expenditure on health compared to GDP per capita") + ylab("Life Expectancy") + scale_x_log10()
+graph2
+```
+
+<br/><br/>
+
+# **Graph of Life Expectancy and Gross Domestic Product per capita (GDP)**
+```{r}
+df3 <- data %>% group_by(Country) %>% mutate(meanLifeExp = mean(Life.expectancy), meanGDP = mean(GDP)) %>% distinct(Country, .keep_all = TRUE) %>% ungroup() %>% select(Status, meanLifeExp, meanGDP)
+graph3 <- ggplot(df3, aes(x = meanGDP, y = meanLifeExp, fill = Status)) + geom_boxplot() + ggtitle("Relationship between Life Expectancy and GDP") + xlab("GDP") + ylab("Life Expectancy")
+graph3
+
+```
+
+<br/><br/>
+
+# **Graph of Life Expectancy and Population**
+```{r}
+df4 <- data %>% group_by(Country) %>% mutate(meanLifeExp = mean(Life.expectancy), meanPop = mean(Population)) %>% distinct(Country, .keep_all = TRUE) %>% ungroup() %>% select(Status, meanLifeExp, meanPop)
+graph4 <- ggplot(df4, aes(x = meanPop, y = meanLifeExp, color = Status)) + geom_point() + ggtitle("Relationship between Life Expectancy and Population") + xlab("Population") + ylab("Life Expectancy") + scale_x_log10() + facet_wrap(~Status)
+graph4
+```
+
+<br/><br/>
+
+# **Graph of Life Expectancy and Human Development Index in terms of income composition of resources (index ranging from 0 to 1)**
+```{r}
+df5 <- data %>% group_by(Country) %>% mutate(meanLifeExp = mean(Life.expectancy), meanIncome = mean(Income.composition.of.resources)) %>% distinct(Country, .keep_all = TRUE) %>% ungroup() %>% select(Status, meanLifeExp, meanIncome)
+graph5 <- ggplot(df5, aes(x = meanIncome, y = meanLifeExp, color = Status)) + geom_point() + ggtitle("Relationship between Life Expectancy and Income Composition of resources") + xlab("Income Composition of Resources") + ylab("Life Expectancy") + facet_wrap(~Status)
+graph5
+```
+
+<br/><br/>
+
+# **Part 6: Correlation**
+```{r}
+library(DT)
+fileCleaned <- file %>% drop_na(Life.expectancy)
+cors <- cor(subset(fileCleaned, select = c(Life.expectancy,Alcohol,Total.expenditure,GDP,Population)),use="complete.obs") %>% datatable() %>% formatRound(columns=c("Life.expectancy","Alcohol","Total.expenditure","GDP","Population"), digits=3)
+cors
+```
+
+
+<br/><br/>
+
+# **Part 7: Multivariable Linear Regression**
+
+```{r}
+clean<-file %>% drop_na() 
+require(dplyr)
+```
+
+<br/><br/>
+
+# **Clean data where we treat developing as 0 and developed as 1 to ease linear modelling**
+```{r}
+clean <- clean %>%
+  mutate(clean_status = ifelse(Status == "Developing",0,1))
+linear_model<-lm(Life.expectancy~.-Country-Year-Status,data=clean)
+summary(linear_model)
+```
+
+<br/><br/>
+
+p value<2.2e-16 means there is at least one variable that is highly significant to life expectancy
+To see which predictor variables are significant (Significant test)
+```{r}
+coefficient<-summary(linear_model)$coefficient
+coefficient
+```
+
+<br/><br/>
+
+Ignore those variables in our model where p value>0.05(not significant)
+```{r}
+linear_model<-lm(Life.expectancy~Adult.Mortality+infant.deaths+Alcohol+percentage.expenditure+BMI+under.five.deaths+Total.expenditure+Diphtheria+HIV.AIDS+Income.composition.of.resources+Schooling+clean_status,data=clean)
+linear_model
+```
+# our model equation can be written as 
+
+# Error measure of prediction
+```{r}
+error<-sigma(linear_model)/mean(clean$Life.expectancy) # In our multiple regression example, the RSE is 0.0518 corresponding to 5% error rate.
+error
+```
+
+<br/><br/>
+
+fitted(linear_model) predicted values
+```{r}
+error_from_actual<-influence(linear_model) # regression diagnostics, give the error from actual life expectancy
+layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page
+plot_regression_lineplot<-plot(linear_model) 
+```
+
